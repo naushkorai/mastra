@@ -189,8 +189,9 @@ export class OtelExporter extends BaseExporter {
 
   /**
    * Derive the endpoint for a specific signal from the resolved provider config.
-   * Strips trailing slashes and any existing signal-path suffix so we never
-   * produce a doubled "//v1/logs" or leave a stale "/v1/traces" on a logs URL.
+   * A bare base URL gets the standard "/v1/<signal>" suffix. An endpoint with a path is the
+   * traces URL as configured (like OTEL_EXPORTER_OTLP_TRACES_ENDPOINT), and its logs URL swaps
+   * a trailing "traces" segment for "logs".
    */
   private getSignalEndpoint(resolved: ResolvedProviderConfig, signal: 'traces' | 'logs'): string {
     const signalPaths: Record<string, string> = {
@@ -206,15 +207,19 @@ export class OtelExporter extends BaseExporter {
       base = base.slice(0, -1);
     }
 
-    // Strip any existing signal-path suffix (with or without leading slash variations)
-    for (const path of Object.values(signalPaths)) {
-      if (base.endsWith(path)) {
-        base = base.slice(0, -path.length);
-        break;
-      }
-    }
+    const schemeEnd = base.indexOf('://');
+    const hasPath = base.slice(schemeEnd === -1 ? 0 : schemeEnd + 3).includes('/');
 
-    return base + signalPaths[signal];
+    if (!hasPath) {
+      return base + signalPaths[signal];
+    }
+    if (signal === 'traces' || base.endsWith('/logs')) {
+      return base;
+    }
+    if (base.endsWith('/traces')) {
+      return `${base.slice(0, -'traces'.length)}logs`;
+    }
+    return base + signalPaths.logs;
   }
 
   /**
