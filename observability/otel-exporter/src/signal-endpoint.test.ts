@@ -9,10 +9,12 @@ describe('OtelExporter export URLs', () => {
   let server: http.Server;
   let baseUrl: string;
   let paths: string[];
+  let requests: http.IncomingHttpHeaders[];
 
   beforeAll(async () => {
     server = http.createServer((req, res) => {
       paths.push(req.url ?? '');
+      requests.push(req.headers);
       req.resume();
       req.on('end', () => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -29,6 +31,36 @@ describe('OtelExporter export URLs', () => {
 
   beforeEach(() => {
     paths = [];
+    requests = [];
+  });
+
+  const rootSpan = (): AnyExportedSpan =>
+    ({
+      id: 'a1b2c3d4e5f60718',
+      traceId: '0af7651916cd43dd8448eb211c80319c',
+      type: SpanType.AGENT_RUN,
+      name: 'agent run',
+      startTime: new Date(),
+      endTime: new Date(),
+      isRootSpan: true,
+      isEvent: false,
+      attributes: {},
+      metadata: { userId: 'user-123' },
+    }) as unknown as AnyExportedSpan;
+
+  it('sends Mixpanel traces as protobuf to the AI traces path with the project token', async () => {
+    const exporter = new OtelExporter({
+      provider: { mixpanel: { projectToken: 'abc123', endpoint: `${baseUrl}/v1/ai/otel/traces` } },
+      signals: { logs: false },
+    });
+
+    await exporter.exportTracingEvent({ type: TracingEventType.SPAN_ENDED, exportedSpan: rootSpan() });
+    await exporter.flush();
+    await exporter.shutdown();
+
+    expect(paths).toEqual(['/v1/ai/otel/traces']);
+    expect(requests[0]?.['content-type']).toBe('application/x-protobuf');
+    expect(requests[0]?.authorization).toBe(`Basic ${Buffer.from('abc123:').toString('base64')}`);
   });
 
   // Vendors that serve OTLP under their own path (e.g. Mixpanel's /v1/ai/otel/traces) got
@@ -43,24 +75,10 @@ describe('OtelExporter export URLs', () => {
       provider: { custom: { endpoint: `${baseUrl}${endpointPath}`, protocol: 'http/json' } },
     });
 
-    const now = new Date();
-    await exporter.exportTracingEvent({
-      type: TracingEventType.SPAN_ENDED,
-      exportedSpan: {
-        id: 'a1b2c3d4e5f60718',
-        traceId: '0af7651916cd43dd8448eb211c80319c',
-        type: SpanType.AGENT_RUN,
-        name: 'agent run',
-        startTime: now,
-        endTime: now,
-        isRootSpan: true,
-        isEvent: false,
-        attributes: {},
-      } as unknown as AnyExportedSpan,
-    });
+    await exporter.exportTracingEvent({ type: TracingEventType.SPAN_ENDED, exportedSpan: rootSpan() });
     await exporter.onLogEvent({
       type: 'log',
-      log: { timestamp: now, level: 'info', message: 'hello' },
+      log: { timestamp: new Date(), level: 'info', message: 'hello' },
     });
     await exporter.flush();
     await exporter.shutdown();
@@ -76,21 +94,7 @@ describe('OtelExporter export URLs', () => {
       signals: { logs: false },
     });
 
-    const now = new Date();
-    await exporter.exportTracingEvent({
-      type: TracingEventType.SPAN_ENDED,
-      exportedSpan: {
-        id: 'a1b2c3d4e5f60718',
-        traceId: '0af7651916cd43dd8448eb211c80319c',
-        type: SpanType.AGENT_RUN,
-        name: 'agent run',
-        startTime: now,
-        endTime: now,
-        isRootSpan: true,
-        isEvent: false,
-        attributes: {},
-      } as unknown as AnyExportedSpan,
-    });
+    await exporter.exportTracingEvent({ type: TracingEventType.SPAN_ENDED, exportedSpan: rootSpan() });
     await exporter.flush();
     await exporter.shutdown();
 

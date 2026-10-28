@@ -13,6 +13,7 @@ export type {
   NewRelicConfig,
   TraceloopConfig,
   LaminarConfig,
+  MixpanelConfig,
   CustomConfig,
   ExportProtocol,
 } from './types.js';

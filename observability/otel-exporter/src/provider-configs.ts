@@ -10,6 +10,7 @@ import type {
   NewRelicConfig,
   TraceloopConfig,
   LaminarConfig,
+  MixpanelConfig,
   CustomConfig,
 } from './types.js';
 
@@ -40,6 +41,8 @@ export function resolveProviderConfig(config: ProviderConfig, debug?: boolean): 
     resolved = resolveTraceloopConfig(config.traceloop);
   } else if ('laminar' in config) {
     resolved = resolveLaminarConfig(config.laminar);
+  } else if ('mixpanel' in config) {
+    resolved = resolveMixpanelConfig(config.mixpanel);
   } else if ('custom' in config) {
     resolved = resolveCustomConfig(config.custom);
   } else {
@@ -223,6 +226,33 @@ function resolveLaminarConfig(config: LaminarConfig): ResolvedProviderConfig | n
     endpoint,
     headers,
     protocol: 'http/protobuf', // Use HTTP/protobuf instead of gRPC for better compatibility
+  };
+}
+
+function resolveMixpanelConfig(config: MixpanelConfig): ResolvedProviderConfig | null {
+  const projectToken = config.projectToken ?? process.env.MIXPANEL_PROJECT_TOKEN;
+  const region = config.region ?? (process.env.MIXPANEL_REGION as 'us' | 'eu' | 'in' | undefined);
+  const configEndpoint = config.endpoint ?? process.env.MIXPANEL_ENDPOINT;
+
+  if (!projectToken) {
+    console.error(
+      '[OtelExporter] Mixpanel configuration requires projectToken. ' +
+        'Set MIXPANEL_PROJECT_TOKEN environment variable or pass it in config. Tracing will be disabled.',
+    );
+    return null;
+  }
+
+  const endpoint = configEndpoint || `https://ingestion-${region || 'us'}.mixpanel.com/v1/ai/otel/traces`;
+
+  return {
+    endpoint,
+    headers: {
+      // Mixpanel takes the project token as the Basic auth username with an empty password
+      Authorization: `Basic ${btoa(`${projectToken}:`)}`,
+    },
+    protocol: 'http/protobuf',
+    // Mixpanel drops spans without user.id
+    metadataAttributes: { userId: 'user.id' },
   };
 }
 

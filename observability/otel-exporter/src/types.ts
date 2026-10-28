@@ -41,6 +41,12 @@ export interface LaminarConfig {
   endpoint?: string;
 }
 
+export interface MixpanelConfig {
+  projectToken?: string; // Required at runtime (MIXPANEL_PROJECT_TOKEN)
+  region?: 'us' | 'eu' | 'in';
+  endpoint?: string;
+}
+
 export interface CustomConfig {
   endpoint?: string; // Required at runtime
   headers?: Record<string, string>;
@@ -54,6 +60,7 @@ export type ProviderConfig =
   | { newrelic: NewRelicConfig }
   | { traceloop: TraceloopConfig }
   | { laminar: LaminarConfig }
+  | { mixpanel: MixpanelConfig }
   | { custom: CustomConfig };
 
 export interface OtelExporterConfig extends BaseExporterConfig {

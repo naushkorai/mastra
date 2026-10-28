@@ -237,6 +237,40 @@ interface LaminarConfig {
 ]}
 />
 
+### `MixpanelConfig`
+
+```typescript
+interface MixpanelConfig {
+  projectToken?: string
+  region?: 'us' | 'eu' | 'in'
+  endpoint?: string
+}
+```
+
+<PropertiesTable
+  props={[
+  {
+    name: 'projectToken',
+    type: 'string',
+    description: 'Mixpanel project token. Falls back to MIXPANEL_PROJECT_TOKEN env var.',
+    required: false,
+  },
+  {
+    name: 'region',
+    type: "'us' | 'eu' | 'in'",
+    description: "Project data residency region. Falls back to MIXPANEL_REGION env var. (default: 'us')",
+    required: false,
+  },
+  {
+    name: 'endpoint',
+    type: 'string',
+    description:
+      'Custom endpoint. Falls back to MIXPANEL_ENDPOINT env var. (default: https://ingestion-us.mixpanel.com/v1/ai/otel/traces)',
+    required: false,
+  },
+]}
+/>
+
 ### `CustomConfig`
 
 ```typescript
@@ -311,6 +345,7 @@ const exporter = new OtelExporter({ provider: { signoz: {} } })
 // Set NEW_RELIC_LICENSE_KEY for New Relic
 // Set TRACELOOP_API_KEY for Traceloop
 // Set LMNR_PROJECT_API_KEY for Laminar
+// Set MIXPANEL_PROJECT_TOKEN for Mixpanel
 ```
 
 ### Explicit Configuration

@@ -1,7 +1,66 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { resolveProviderConfig } from './provider-configs';
 
 describe('Provider Configurations', () => {
+  describe('Mixpanel', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      vi.restoreAllMocks();
+    });
+
+    it('maps userId metadata to user.id, since Mixpanel drops spans without it', () => {
+      const config = resolveProviderConfig({ mixpanel: { projectToken: 'abc123' } });
+
+      expect(config?.metadataAttributes).toEqual({ userId: 'user.id' });
+    });
+
+    it('sends to the US AI traces endpoint with the token as the Basic auth username', () => {
+      const config = resolveProviderConfig({ mixpanel: { projectToken: 'abc123' } });
+
+      expect(config?.endpoint).toBe('https://ingestion-us.mixpanel.com/v1/ai/otel/traces');
+      expect(config?.headers['Authorization']).toBe(`Basic ${Buffer.from('abc123:').toString('base64')}`);
+      expect(config?.protocol).toBe('http/protobuf');
+    });
+
+    it.each([
+      ['eu', 'https://ingestion-eu.mixpanel.com/v1/ai/otel/traces'],
+      ['in', 'https://ingestion-in.mixpanel.com/v1/ai/otel/traces'],
+    ] as const)('uses the %s data residency endpoint', (region, endpoint) => {
+      const config = resolveProviderConfig({ mixpanel: { projectToken: 'abc123', region } });
+
+      expect(config?.endpoint).toBe(endpoint);
+    });
+
+    it('prefers an explicit endpoint over the region', () => {
+      const config = resolveProviderConfig({
+        mixpanel: { projectToken: 'abc123', region: 'eu', endpoint: 'https://proxy.example.com/v1/ai/otel/traces' },
+      });
+
+      expect(config?.endpoint).toBe('https://proxy.example.com/v1/ai/otel/traces');
+    });
+
+    it('reads the token, region and endpoint from the environment', () => {
+      vi.stubEnv('MIXPANEL_PROJECT_TOKEN', 'env-token');
+      vi.stubEnv('MIXPANEL_REGION', 'in');
+
+      const config = resolveProviderConfig({ mixpanel: {} });
+
+      expect(config?.endpoint).toBe('https://ingestion-in.mixpanel.com/v1/ai/otel/traces');
+      expect(config?.headers['Authorization']).toBe(`Basic ${Buffer.from('env-token:').toString('base64')}`);
+
+      vi.stubEnv('MIXPANEL_ENDPOINT', 'https://proxy.example.com/v1/ai/otel/traces');
+      expect(resolveProviderConfig({ mixpanel: {} })?.endpoint).toBe('https://proxy.example.com/v1/ai/otel/traces');
+    });
+
+    it('disables tracing without a project token', () => {
+      vi.stubEnv('MIXPANEL_PROJECT_TOKEN', '');
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(resolveProviderConfig({ mixpanel: {} })).toBeNull();
+      expect(error).toHaveBeenCalledWith(expect.stringContaining('MIXPANEL_PROJECT_TOKEN'));
+    });
+  });
+
   describe('SigNoz', () => {
     it('should configure SigNoz with cloud endpoint', () => {
       const config = resolveProviderConfig({

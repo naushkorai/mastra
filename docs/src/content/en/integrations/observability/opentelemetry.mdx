@@ -13,13 +13,13 @@ Mastra supports OpenTelemetry (OTEL) through an exporter for sending traces and 
 
 ## Exporter
 
-The OpenTelemetry exporter sends your traces and logs using standardized [OpenTelemetry Semantic Conventions for GenAI](https://opentelemetry.io/docs/specs/semconv/gen-ai/). This ensures broad compatibility with platforms like Datadog, New Relic, Sentry, SigNoz, MLflow, Latitude, Dash0, Traceloop, Laminar, telemetry.dev, Sazabi, and more.
+The OpenTelemetry exporter sends your traces and logs using standardized [OpenTelemetry Semantic Conventions for GenAI](https://opentelemetry.io/docs/specs/semconv/gen-ai/). This ensures broad compatibility with platforms like Datadog, New Relic, Sentry, SigNoz, MLflow, Latitude, Dash0, Traceloop, Laminar, Mixpanel, telemetry.dev, Sazabi, and more.
 
 ### Installation
 
 Each provider requires specific protocol packages. Install the base exporter plus the protocol package for your provider:
 
-#### For HTTP/Protobuf providers (SigNoz, New Relic, Sentry, Laminar, MLflow, Latitude, telemetry.dev)
+#### For HTTP/Protobuf providers (SigNoz, New Relic, Sentry, Laminar, Mixpanel, MLflow, Latitude, telemetry.dev)
 
 ```bash npm2yarn
 npm install @mastra/otel-exporter@latest @opentelemetry/exporter-trace-otlp-proto
@@ -48,6 +48,7 @@ All providers support zero-config setup via environment variables. Set the appro
 | New Relic | `NEW_RELIC_LICENSE_KEY` (required), `NEW_RELIC_ENDPOINT` (optional) |
 | Traceloop | `TRACELOOP_API_KEY` (required), `TRACELOOP_DESTINATION_ID`, `TRACELOOP_ENDPOINT` (optional) |
 | Laminar | `LMNR_PROJECT_API_KEY` (required), `LAMINAR_ENDPOINT` (optional) |
+| Mixpanel | `MIXPANEL_PROJECT_TOKEN` (required), `MIXPANEL_REGION` (optional), `MIXPANEL_ENDPOINT` (optional) |
 
 ### Provider configurations
 
@@ -371,6 +372,50 @@ new OtelExporter({
 For Laminar-specific features like native span paths, metadata, and tags rendering in the Laminar dashboard, consider using the dedicated [`@mastra/laminar`](/integrations/observability/laminar) exporter instead. It provides optimized integration with Laminar's platform.
 
 :::
+
+#### Mixpanel
+
+[Mixpanel Agent Intelligence](https://docs.mixpanel.com/docs/agent-intelligence) turns each span into an event tied to the user who made the request, so agent runs, cost, and errors sit next to your product analytics. Mixpanel drops spans without a `user.id` attribute. The Mixpanel provider sets it from the `userId` metadata key, so pass `userId` in `tracingOptions.metadata` or extract it from [`RequestContext`](/docs/observability/tracing/overview#automatic-metadata-from-requestcontext) with `requestContextKeys: ['userId']`. If your user ID lives under another metadata key, map it with `metadataAttributes: { customerId: 'user.id' }`.
+
+The Mixpanel provider sends traces over HTTP/Protobuf. Mixpanel doesn't accept OTLP logs, so set `signals: { logs: false }` if you have a logs exporter package installed.
+
+##### Zero-Config Setup
+
+```bash title=".env"
+# Required
+MIXPANEL_PROJECT_TOKEN=your-project-token
+
+# Optional
+MIXPANEL_REGION=us  # 'us' | 'eu' | 'in', matching your project's data residency
+```
+
+```typescript title="src/mastra/index.ts"
+new OtelExporter({ provider: { mixpanel: {} }, signals: { logs: false } })
+```
+
+##### Explicit Configuration
+
+```typescript title="src/mastra/index.ts"
+new OtelExporter({
+  provider: {
+    mixpanel: {
+      projectToken: process.env.MIXPANEL_PROJECT_TOKEN,
+      region: 'eu', // 'us' | 'eu' | 'in'
+    },
+  },
+  signals: { logs: false },
+})
+```
+
+Pass the user on each call:
+
+```typescript
+await agent.generate('Summarize my last order', {
+  tracingOptions: { metadata: { userId: 'user-123' } },
+})
+```
+
+Spans appear in your Mixpanel project as `$mp_ai_span` events.
 
 #### Datadog
 
