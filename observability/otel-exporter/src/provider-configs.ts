@@ -17,6 +17,8 @@ export interface ResolvedProviderConfig {
   endpoint: string;
   headers: Record<string, string>;
   protocol: ExportProtocol;
+  /** Default `metadataAttributes` for this provider. */
+  metadataAttributes?: Record<string, string>;
 }
 
 export function resolveProviderConfig(config: ProviderConfig, debug?: boolean): ResolvedProviderConfig | null {

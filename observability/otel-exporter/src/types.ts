@@ -74,6 +74,13 @@ export interface OtelExporterConfig extends BaseExporterConfig {
   exporter?: SpanExporter;
 
   /**
+   * Copy span metadata keys to top-level span attributes, keyed by metadata key,
+   * e.g. `{ userId: 'user.id' }`. Values are exported as strings. Merged over the
+   * provider's defaults, if any.
+   */
+  metadataAttributes?: Record<string, string>;
+
+  /**
    * Signal enablement. All signals are enabled by default when their
    * required OTEL packages are installed. Set to false to disable.
    */

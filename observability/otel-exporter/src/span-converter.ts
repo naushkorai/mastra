@@ -43,6 +43,7 @@ export class SpanConverter {
       packageName: string;
       serviceName?: string;
       config?: OtelExporterConfig;
+      metadataAttributes?: Record<string, string>;
     },
   ) {
     this.format = params.format;
@@ -109,6 +110,14 @@ export class SpanConverter {
           continue;
         }
         attributes[`mastra.metadata.${k}`] = typeof v === 'object' ? JSON.stringify(v) : v;
+      }
+
+      for (const [metadataKey, attributeName] of Object.entries(this.params.metadataAttributes ?? {})) {
+        const value = span.metadata[metadataKey];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        attributes[attributeName] = typeof value === 'object' ? JSON.stringify(value) : String(value);
       }
     }
 

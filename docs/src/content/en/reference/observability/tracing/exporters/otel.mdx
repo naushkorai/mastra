@@ -29,6 +29,7 @@ interface OtelExporterConfig {
   timeout?: number
   batchSize?: number
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
+  metadataAttributes?: Record<string, string>
 }
 ```
 
@@ -69,6 +70,13 @@ interface OtelExporterConfig {
     name: 'resourceAttributes',
     type: 'DetectedResourceAttributes',
     description: 'Optional OpenTelemetry Resource Attributes (values here override any defaults)',
+    required: false,
+  },
+  {
+    name: 'metadataAttributes',
+    type: 'Record<string, string>',
+    description:
+      "Copies span metadata keys to top-level span attributes as strings, keyed by metadata key. Use any attribute names your backend reads, for example `{ userId: 'user.id', tenantId: 'tenant.id' }`. Entries override the provider's defaults for the same metadata key. Metadata is still exported under `mastra.metadata.*`.",
     required: false,
   },
 ]}

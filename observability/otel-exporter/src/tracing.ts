@@ -323,6 +323,7 @@ export class OtelExporter extends BaseExporter {
         serviceName,
         config: this.config,
         format: 'GenAI_v1_38_0',
+        metadataAttributes: { ...resolved.metadataAttributes, ...this.config.metadataAttributes },
       });
 
       const exporterForProcessor = this.isDebug
